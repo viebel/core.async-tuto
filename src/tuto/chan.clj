@@ -4,10 +4,11 @@
 
 ;; channel with no buffer
 (def c (chan))
-(thread (>!! c "a")
-        (println "done"))
+(def f (future (>!! c "a")
+                (println "done")))
 
 ;; the thread is blocked until we read from the channel
+f
 (<!! c)
 
 
@@ -34,10 +35,4 @@
 
 (let [c (chan)]
   (alts!! [[c "hello"]] :default false))
-
-;; writing to a channel: put!, >!!, alts!!
-;; put! writes asynchronously - never blocks (until...)
-;; >!! writes synchronously - blocks if buffer is full
-;; alts!! tries to write and may provide a behaviour when buffer is full
-
 

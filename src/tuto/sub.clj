@@ -27,7 +27,12 @@
 (put! c {:route "bar" :data 555})
 
 
-
+;; Exercises
+;; Create a system where commands are passed to the appropriate executor
+;; command types:
+;;    - numbers e.g (* 2 3)
+;;    - sequences e.g (first [1 2 3])
+;; There will be multiple executors of the same type
 
 
 

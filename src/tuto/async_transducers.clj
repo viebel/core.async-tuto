@@ -3,13 +3,12 @@
 
 
 (let [c (chan 1 (map inc))]
-  (go (println "c: " (<! c)))
-  (put! c 10))
-
+  (put! c 10)
+  (<!! c))
 
 (let [c (chan 1)
       b (chan 1)]
   (pipeline 1 b (map inc) c)
-  (go (println "b: " (<! b)))
-  (put! c 10))
+  (put! c 10)
+  (<!! b))
 

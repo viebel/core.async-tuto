@@ -28,3 +28,8 @@
   (dotimes [i 15]
     (put! b (range i))))
 
+
+;; Exercises
+;; Design a system where messages are sent as sequences of arbitrary length
+;; and processed in sequences of 3 items
+

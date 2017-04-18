@@ -6,7 +6,7 @@
 ;; we can escape the callback hell
 
 (defn inc-thread [x cb]
-  (thread
+  (future
     (cb (inc x))))
 
 (inc-thread 5 #(println "inc-thread: " %))
@@ -51,3 +51,20 @@
 
   (go (println "cnn.com: " (<! (slurp-async "http://www.cnn.com")))))
 
+;;; Write a loop that receives 10 times an number from the user and prints the square of the number
+;;; Without creating threads
+;;; Without blocking the main thread 
+
+
+;;; 1. write with callbacks
+;;; 2. write with go-loop
+
+
+;; Same exerices with 4 loops
+;; 1st loop: square
+;; 2nd loop: inc
+;; 3rd loop: dec
+;; 4th loop: (* x (+ x 2))
+
+;;; don't even try with callbacks
+(read)
