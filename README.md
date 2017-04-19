@@ -1,6 +1,9 @@
 # core.async-tuto
 core.async tutorial
 
+# Demo
+
+[core.async in the browser](http://app.klipse.tech/?container&cljs_in.gist=viebel/c229fbca8e6d89b2695f1849b5127e93)
 
 # Topics
 
