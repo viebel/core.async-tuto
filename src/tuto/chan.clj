@@ -1,5 +1,5 @@
 (ns tuto.chan
-  (:require [clojure.core.async :refer [put! <!! >!! chan thread alts!!]]))
+  (:require [clojure.core.async :refer [put! <!! >!! chan thread alts!! take!]]))
 
 
 ;; channel with no buffer
@@ -28,11 +28,9 @@ f
   (dotimes [i 1025]
     (put! c "hello")))
 
-;; alts!! tries to write and may provide a behaviour when buffer is full
+
+;; read messages with take!
 
 (let [c (chan 1)]
-  (alts!! [[c "hello"]] :default false))
-
-(let [c (chan)]
-  (alts!! [[c "hello"]] :default false))
-
+  (take! c #(print (str "taken: " %)))
+  (put! c "hi"))
