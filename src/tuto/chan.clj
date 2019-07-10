@@ -5,7 +5,8 @@
 ;; channel with no buffer
 (def c (chan))
 (def f (future (>!! c "a")
-                (println "done")))
+               (println "done")
+               1))
 
 ;; the thread is blocked until we read from the channel
 f
@@ -31,6 +32,9 @@ f
 
 ;; read messages with take!
 
-(let [c (chan 1)]
+(let [c (chan)]
   (take! c #(print (str "taken: " %)))
-  (put! c "hi"))
+  (>!! c "hi"))
+
+
+

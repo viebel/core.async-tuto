@@ -29,4 +29,6 @@
 ;; the thread is blocked until we read from the channel
 (<!! c)
 
+(<!! (thread 1))
+
 

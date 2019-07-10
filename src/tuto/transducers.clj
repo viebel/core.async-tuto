@@ -4,6 +4,8 @@
 
 ;; partition vs partition-all
 (partition 4 (range 10))
+(partition 4 1 (range 10))
+
 (partition-all 4 (range 10))
 
 ;; transducers basics
@@ -15,9 +17,10 @@
 
 ;; composing
 
-(def inc-and-odd (comp (filter odd?) (map inc)))
+(def inc-and-odd (comp (filter odd?)
+                       (map inc)))
 
-(time (last (sequence inc-and-odd (range 1e6))))
+(sequence inc-and-odd (range 10))
 
 (with-progress-reporting (bench (->> (range 100)
                                      (filter odd?)

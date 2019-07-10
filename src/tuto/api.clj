@@ -1,5 +1,5 @@
 (ns tuto.api
-  (:require [clojure.core.async :refer [go-loop go >! <! put! <!! >!! chan dropping-buffer buffer sliding-buffer thread mult tap untap pub sub]]))
+  (:require [clojure.core.async :as async :refer [go-loop go >! <! put! <!! >!! chan dropping-buffer buffer sliding-buffer thread mult tap untap pub sub]]))
 
 
 ;; instead of callbacks we can have code that looks synchronous
@@ -9,7 +9,7 @@
   (future
     (cb (inc x))))
 
-(inc-thread 5 #(println "inc-thread: " %))
+(inc-thread 50 #(println "inc-thread: " %))
 
 
 (defn inc-async [x]
@@ -17,6 +17,7 @@
     (inc-thread x #(put! c %))
     c))
 
+(inc-thread 50 #(println "inc-thread: " %))
 (println "do-inc-async" (<!! (inc-async 19)))
 
 (<!! (inc-async 19))
@@ -37,7 +38,6 @@
 
 
 
-
 ;;;;
 
 (comment
@@ -49,8 +49,10 @@
       (slurp-cb url #(put! c %))
       c))
 
-  (go (println "cnn.com: " (<! (slurp-async "http://www.cnn.com")))))
+  (go (println "cnn.com: " (async/map identity  (slurp-async "http://www.cnn.com")))))
 
+
+(<!! (slurp-async "http://www.cnn.com"))
 ;;; Write a loop that receives 10 times an number from the user and prints the square of the number
 ;;; Without creating threads
 ;;; Without blocking the main thread 
