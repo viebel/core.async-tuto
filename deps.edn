@@ -1,0 +1,2 @@
+{:deps {org.clojure/core.async {:mvn/version "0.4.500"}
+        criterium {:mvn/version "0.4.5"}}}

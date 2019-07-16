@@ -1,109 +1,155 @@
 (ns tuto.go
-  (:require [clojure.core.async :refer [go <! >! chan put! dropping-buffer buffer sliding-buffer <!! timeout thread]]))
+  (:require [clojure.core.async :as async
+             :refer [go <! >! chan put! dropping-buffer buffer sliding-buffer <!! timeout thread]]))
 
 
-;; The go macro
-;; (go (println "got" (<! c))) => something like:
-;; (take! c (fn [x] (println "got" x)))
+ ;; The go macro
+ ;; (go (println "got" (<! c))) => something like:
+ ;; (take! c (fn [x] (println "got" x)))
 
-;; it uses its own thread pool
-;; go processes are lightweight threads
+ ;; it uses its own "thread" pool
+ ;; go processes are lightweight threads
 
-;; Go blocks
-(def c (chan))
-(do (go (>! c "a")
-        (println "done"))
+  ;; Go blocks
+(defn go-write []
+  (let [c (chan)]
+    (go (>! c "a")
+        (println "done in go"))
+    (println "AAAAA")
+    c))
 
-    (println "aaaa"))
-;; the previous process is blocked until we read
-(go (<! c))
+(comment
+  (def c (go-write))
+  ;; the previous process is blocked until we read
+  (<!! c))
 
-;; buffer
-(let [c (chan 10)]
-  (go (>! c "a")
-      (println "done")))
+(defn go-write-buffer []
+  (let [c (chan 10)]
+    (go (>! c "a")
+        (println "done"))))
 
-;; the previous process is not blocked because of the buffer
+(comment
+  ;; the previous process is not blocked because of the buffer
+  (go-write-buffer))
 
 
 ;; how many messages are written?
-(let [c (chan 10)]
-  (go (dotimes [i 15]
-        (>! c "a")
-        (print (str "done -- " i "\n"))))
-  (go
-    (print "read\n")
-    (<! c)))
+(defn go-write-and-read []
+  (let [c (chan (sliding-buffer 10))]
+    (go (dotimes [i 15]
+          (>! c (str "a " i))
+          (println (str "done -- " i))))
+    (go
+      (println (str "read " (<! c))))))
+
+(comment
+  (go-write-and-read))
+
+(defn go-calc [x]
+  ;;go returns a channel
+  (go (<! (timeout 2000))
+      (* x x)))
+
+(comment
+  (def cc (async/map inc [(go-calc 2) (go-calc 4)]))
+  (map + (range 10) (range 100 1000))
+  (def num-c (async/to-chan (range 10)))
+  (def num-d (async/to-chan (range 100 1000)))
+  (def inc-num-c (async/map + [num-c num-d]))
+  (<!! inc-num-c)
+  (<!! cc)
+  (<!! (go-calc 12)))
 
 
-;;go returns a channel
+(defn go-sleep-n-times [n]
+  (dotimes [i n]
+    (go
+      (<! (timeout 1000))
+      (println i))))
 
-(<!! (go (let [x 10]
-           (<! (timeout 5000))
-           (* x x))))
-
-;; Questions
-;; 1. what's the difference between (go (<! ..)) and (thread (<!! ...))?
-
-
-(dotimes [i 10]
-  (go
-    (<! (timeout 1000))
-    (println i)))
+(comment
+  (go-sleep-n-times 10))
 
 
-(do
-  (def d (promise))
-  (def c (chan))
-  (let [t (. System (nanoTime))]
-    (put! c 1 (fn [_]
-                  (deliver d (- (. System (nanoTime)) t))))
-    (println "taken value, delivery time - same thread"  [(<!! c) @d])))
-
-(do
-  (def d (promise))
-  (def c (chan))
-  (let [t (. System (nanoTime))]
-    (put! c 1
-                (fn [_]
-                  (deliver d (- (. System (nanoTime)) t))))
-    (println "taken value, delivery time - same thread"  [(<!! c) @d])))
-
-(let [c (chan)]
-  (dotimes [i 1]
-    (put! c i)
-    (let [t (. System (nanoTime))]
-      (go (let [val (<! c)
-                elapsed (- (. System (nanoTime)) t)]
-            (println (str "taken value, delivery time with go: -- " val " time: " (float  (/ elapsed 1e6)) "ms" "\n")))))))
-
-
-(let [c (chan)]
-  (dotimes [i 1]
-    (put! c i)
-    (let [t (. System (nanoTime))]
-      (future (let [val (<!! c)
-                elapsed (- (. System (nanoTime)) t)]
-                (println (str "taken value, delivery time with future -- " val " time: " (float  (/ elapsed 1e6)) "ms" "\n")))))))
-
-(do
-  (def c (chan))
-  (put! c 2)
-  (let [t (. System (nanoTime))]
+(defn thread-sleep-n-times [n]
+  (dotimes [i n]
     (thread
-      (<!! c)
-      (let [elapsed (- (. System (nanoTime)) t)]
-        (println (str "taken value, delivery time with future -- " val " time: " (float  (/ elapsed 1e6)) "ms" "\n"))))))
+      (<!! (timeout 1000))
+      (println i))))
+
+(comment
+  (thread-sleep-n-times 10))
+
+(comment
+ ;; performances
+  (do
+    (let [c (chan)
+          _ (put! c 2)
+          t (. System (nanoTime))
+          elapsed @(future
+                     (let [_ (<!! c)]
+                       (- (. System (nanoTime)) t)))]
+      (println (str "taken value, delivery time with thread --  time:" (float  (/ elapsed 1e6)) "ms" "\n")))
+
+    (let [c (chan)
+          _ (put! c 1)
+          t (. System (nanoTime))]
+      (go  (let [elapsed (<! (go (let [val (<! c)]
+                                    (- (. System (nanoTime)) t))))]
+             (println (str "taken value, delivery time with go: -- " val " time: " (float  (/ elapsed 1e6)) "ms" "\n"))))))
+
+  (do
+    (let [elapsed-total (loop [i 20000
+                               elapsed-total 0]
+                          (if (zero? i)
+                            elapsed-total
+                            (let [c (chan)
+                                  _ (put! c 1)
+                                  t (. System (nanoTime))]
+                              (let [elapsed (<!! (go (let [_ (<! c)]
+                                                       (- (. System (nanoTime)) t))))]
+                                (recur (dec i) (+ elapsed-total elapsed))))))]
+      (println (str "taken value, delivery time with go: --  time:" (float  (/ elapsed-total 1e6)) "ms" "\n")))
+
+    (let [elapsed-total (loop [i 20000
+                               elapsed-total 0]
+                          (if (zero? i)
+                            elapsed-total
+                            (let [c (chan)
+                                  _ (put! c 1)
+                                  t (. System (nanoTime))]
+                              (let [elapsed (deref (thread (let [_ (<! c)]
+                                                       (- (. System (nanoTime)) t))))]
+                                (recur (dec i) (+ elapsed-total elapsed))))))]
+      (println (str "taken value, delivery time with go: --  time:" (float  (/ elapsed-total 1e6)) "ms" "\n")))
+
+    
+    )
+
+  (let [iterations 100]
+    [(let [t (. System (nanoTime))]
+        (dotimes [_ iterations]
+          (let [c (chan)
+                _ (put! c 1)]
+            (<!! (deref (future c)))))
+        (let [elapsed (- (. System (nanoTime)) t)]
+          (str (float  (/ elapsed 1e6)) "ms")))
+
+     #_(let [t (. System (nanoTime))]
+       (dotimes [_ iterations]
+         (let [c (chan)
+               _ (put! c 1)]
+           (<!! (thread (<! c)))))
+       (let [elapsed (- (. System (nanoTime)) t)]
+         (str (float  (/ elapsed 1e6)) "ms")))
+     
+     (let [t (. System (nanoTime))]
+       (dotimes [_ iterations]
+         (let [c (chan)
+               _ (put! c 1)]
+           (<!! (go (<! c)))))
+       (let [elapsed (- (. System (nanoTime)) t)]
+         (str (float  (/ elapsed 1e6)) "ms")))])
 
 
-(macroexpand '(go
-                (+ 1 2)
-                (+ 3 4)))
-
-(defn f []
-  (+ 1 2)
-  (+ 3 4))
-
-(go (f))
-
-
+  )
