@@ -11,10 +11,6 @@
 
   (<!! (timeout 1000))
 
-  (let [c (chan)
-        t (timeout 1000)]
-    (= t (second (alts!! [c t]))))
-
 
   (let [c (chan)
         t (timeout 1000)
@@ -43,7 +39,6 @@
       [c] ([val ch] val)
       :default 42))
 
-
   (let [c (chan)
         t (timeout 1000)]
     (put! c "hello")
@@ -57,16 +52,36 @@
   ;;Write a function that that slurps a url with a timeout parameter
 
 
-(defn slurp-cb [url cb]
-  (future (cb (slurp url))))
+(defn slurp-cb [url cb on-error]
+  (future (try
+            (cb (slurp url))
+            (catch Exception e
+              (on-error e)))))
+
+(comment
+  (slurp-cb "adasdas" println #(println "error" %))
+  (slurp-cb "http://www.google.com" println #(println "error" %)))
+
 
 (defn slurp-async [url]
   (let [c (chan)]
-    (slurp-cb url #(put! c %))
+    (slurp-cb url
+              #(put! c [:ok %])
+              #(put! c [:error %]))
     c))
 
+
 (comment
-  (<!! (slurp-async "http://www.google.com")))
+  (dotimes [_ 19990]
+    (go
+      (<! (slurp-async "http://www.google.com"))))
+  
+  (let [[status data] (<!! (slurp-async "http://www.google.com"))]
+    status)
+
+  (let [[status data] (<!! (slurp-async "http://www.fdsfsdfdss"))]
+    status)
+  )
 
 
 (defn slurp-timeout [url timeout-msec]
@@ -119,6 +134,10 @@
   ;; Questions
   ;; alts! vs. alt! http://stackoverflow.com/questions/22085497/in-clojure-core-async-whats-the-difference-between-alts-and-alt
 
+  (macroexpand '(go (+ 1 2)
+                    (* 3 4)
+                    (<! (timeout 100))
+                    (println "aaa")))
 
   
   )

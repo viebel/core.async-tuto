@@ -1,6 +1,6 @@
 (ns tuto.go
   (:require [clojure.core.async :as async
-             :refer [go <! >! chan put! dropping-buffer buffer sliding-buffer <!! timeout thread]]))
+             :refer [go <! >! chan put! dropping-buffer buffer sliding-buffer <!! timeout thread close!]]))
 
 
  ;; The go macro
@@ -45,12 +45,26 @@
 (comment
   (go-write-and-read))
 
+(defn square-async [x]
+  (let [c (chan)]
+    (go  (<! (timeout 2000))
+         (put! c (* x x)))
+    c))
+
+(comment
+  
+  (<!! (timeout 2000))
+  (def c (square-async 9))
+  (<!! c))
+
 (defn go-calc [x]
   ;;go returns a channel
   (go (<! (timeout 2000))
       (* x x)))
 
 (comment
+  (<!! (go (<! (timeout 2000))
+           (* 9 9)))
   (def cc (async/map inc [(go-calc 2) (go-calc 4)]))
   (map + (range 10) (range 100 1000))
   (def num-c (async/to-chan (range 10)))
@@ -67,8 +81,15 @@
       (<! (timeout 1000))
       (println i))))
 
+(defn go-go-sleep-n-times [n]
+  (go
+    (dotimes [i n]
+      (<! (timeout 1000))
+      (println i))))
+
 (comment
-  (go-sleep-n-times 10))
+  (go-sleep-n-times 10)
+  (go-go-sleep-n-times 10))
 
 
 (defn thread-sleep-n-times [n]

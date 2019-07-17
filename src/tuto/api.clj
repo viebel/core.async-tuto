@@ -1,28 +1,36 @@
 (ns tuto.api
   (:require [clojure.core.async :as async :refer [go-loop go >! <! put! <!! >!! chan dropping-buffer buffer sliding-buffer thread mult tap untap pub sub]]))
 
+
+;; instead of callbacks we can have code that looks synchronous
+;; we can escape the callback hell
+
+(defn inc-cb [x cb]
+  (future
+    (cb (inc x))))
+
+
 (comment
-  ;; instead of callbacks we can have code that looks synchronous
-  ;; we can escape the callback hell
-
-  (defn inc-thread [x cb]
-    (future
-      (cb (inc x))))
-
-  (inc-thread 50 #(println "inc-thread: " %))
+    
+  (inc-cb 50
+          #(println "inc-thread: " %)))
 
 
-  (defn inc-async [x]
-    (let [c (chan)]
-      (inc-thread x #(put! c %))
-      c))
+(defn inc-async [x]
+  (let [c (chan)]
+    (inc-cb x #(put! c %))
+    c))
 
-  (inc-thread 50 #(println "inc-thread: " %))
+
+(comment
+
+
   (println "do-inc-async" (<!! (inc-async 19)))
 
   (<!! (inc-async 19))
 
 
+  (slurp "http://www.google.com")
 ;;; Exercises
 
   ;; async-slurp
@@ -32,11 +40,9 @@
     (future ))
 
   (defn slurp-async [url]
-    (let [c (chan)]))
+    (go (slurp url)))
 
-  (go (println "cnn.com: " (<! (slurp-async "http://www.cnn.com"))))
-
-
+  (go (println "cnn.com: " (<! (slurp-async "http://www.google.com"))))
 
 ;;;;
 
