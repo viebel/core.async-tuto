@@ -32,18 +32,40 @@
   ;; the previous process is not blocked because of the buffer
   (go-write-buffer))
 
+(defn go-write-n-buffer []
+  (let [c (chan 10)]
+    (go (dotimes [i 20]
+          (>! c i)
+          (println "wrote " i))
+        (println "done"))))
 
-;; how many messages are written?
-(defn go-write-and-read []
+(comment
+  ;; the previous process is not blocked because of the buffer
+  (go-write-n-buffer))
+
+(defn go-write-on-chan-with-sliding-buffer []
+  ;; only the last 10 messages are written
+  ;; the 5 first messages are dropped
   (let [c (chan (sliding-buffer 10))]
     (go (dotimes [i 15]
           (>! c (str "a " i))
-          (println (str "done -- " i))))
-    (go
-      (println (str "read " (<! c))))))
+          (println (str "wrote " i))))
+    c))
+
+(defn read-from-chan-forever [c]
+  (go
+   (loop []
+     (println (str "read " (<! c)))
+     (recur))))
 
 (comment
-  (go-write-and-read))
+  (def c (go-write-on-chan-with-sliding-buffer))
+  (read-from-chan-forever c))
+
+
+;; timeout in action
+(comment
+  (<!! (timeout 2000)))
 
 (defn square-async [x]
   (let [c (chan)]
@@ -52,8 +74,6 @@
     c))
 
 (comment
-  
-  (<!! (timeout 2000))
   (def c (square-async 9))
   (<!! c))
 
@@ -62,17 +82,22 @@
   (go (<! (timeout 2000))
       (* x x)))
 
+
+;; manipulating data on channels
 (comment
   (<!! (go (<! (timeout 2000))
            (* 9 9)))
-  (def cc (async/map inc [(go-calc 2) (go-calc 4)]))
+  (def c (chan))
+  (def cc (async/map inc [c]))
+  (put! c 1)
+  (<!! cc)
+
   (map + (range 10) (range 100 1000))
   (def num-c (async/to-chan (range 10)))
   (def num-d (async/to-chan (range 100 1000)))
-  (def inc-num-c (async/map + [num-c num-d]))
-  (<!! inc-num-c)
-  (<!! cc)
-  (<!! (go-calc 12)))
+  (def num-c+d (async/map + [num-c num-d]))
+  (<!! num-c+d)
+)
 
 
 (defn go-sleep-n-times [n]
