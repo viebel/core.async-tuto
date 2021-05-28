@@ -3,6 +3,14 @@
              :refer [go <! >! chan put! dropping-buffer buffer sliding-buffer <!! timeout thread close!]]))
 
 
+
+(comment
+
+  (def a (dotimes [_ 1e6]
+           (future (Thread/sleep 100)
+                   (+ 2 3))))
+  (deref a)
+  )
  ;; The go macro
  ;; (go (println "got" (<! c))) => something like:
  ;; (take! c (fn [x] (println "got" x)))
@@ -37,11 +45,14 @@
     (go (dotimes [i 20]
           (>! c i)
           (println "wrote " i))
-        (println "done"))))
+        (println "done"))
+    (println "started in parallel")
+    c))
 
 (comment
   ;; the previous process is not blocked because of the buffer
-  (go-write-n-buffer))
+  (def c (go-write-n-buffer))
+  (<!! c))
 
 (defn go-write-on-chan-with-sliding-buffer []
   ;; only the last 10 messages are written
@@ -59,6 +70,10 @@
      (recur))))
 
 (comment
+  (macroexpand '(go
+                  (loop []
+                    (println (str "read " (<! c)))
+                    (recur))))
   (def c (go-write-on-chan-with-sliding-buffer))
   (read-from-chan-forever c))
 
@@ -70,7 +85,7 @@
 (defn square-async [x]
   (let [c (chan)]
     (go  (<! (timeout 2000))
-         (put! c (* x x)))
+         (>! c (* x x)))
     c))
 
 (comment
@@ -82,6 +97,8 @@
   (go (<! (timeout 2000))
       (* x x)))
 
+(comment
+  (<!! (go-calc 8)))
 
 ;; manipulating data on channels
 (comment
@@ -91,6 +108,7 @@
   (def cc (async/map inc [c]))
   (put! c 1)
   (<!! cc)
+
 
   (map + (range 10) (range 100 1000))
   (def num-c (async/to-chan (range 10)))
